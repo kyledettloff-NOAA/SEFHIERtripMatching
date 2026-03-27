@@ -12,7 +12,6 @@ library(stringdist)
 base_url <- "https://github.com/kyledettloff-NOAA/SEFHIERtripMatching/raw/main/"
 
 # Read in data directly from GitHub
-# (Note: Using url() ensures data is streamed to memory without saving to disk)
 surveys_list  <- readRDS(url(paste0(base_url, "fake_surveydata.rds")))
 logbooks_list <- readRDS(url(paste0(base_url, "fake_logbookdata.rds")))
 
