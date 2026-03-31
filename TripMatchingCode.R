@@ -44,7 +44,6 @@ matched_pool <- inner_join(
 # 3. Ground Truth & Evaluation Set ---------------------------------------------
 # set threshold
 sim_thres <- 1
-
 # identify true matches
 true_matches <- matched_pool %>%
   # filter to high vessel similarities and exclude vessel name matches when "UNNAMED"
