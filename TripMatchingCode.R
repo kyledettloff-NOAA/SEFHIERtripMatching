@@ -15,7 +15,7 @@ base_url <- "https://github.com/kyledettloff-NOAA/SEFHIERtripMatching/raw/main/"
 logbooks_list <- readRDS(url(paste0(base_url, "fake_logbookdata.rds")))
 surveys_list  <- readRDS(url(paste0(base_url, "fake_surveydata.rds")))
 
-# 2. Efficient Matching & Robust Feature Engineering ---------------------------
+# 2. Match Logbook and Survey Data by Date -------------------------------------
 log_df  <- bind_rows(logbooks_list) %>% rename_with(~paste0("Log_", .x)) %>% mutate(Log_Logbook_RowID = row_number())
 surv_df <- bind_rows(surveys_list)  %>% rename_with(~paste0("Surv_", .x)) %>% mutate(Surv_Survey_RowID = row_number())
 
@@ -51,7 +51,7 @@ eval_df <- matched_pool %>%
             by = c("Log_Logbook_RowID", "Surv_Survey_RowID")) %>%
   mutate(is_match = replace_na(is_match, 0))
 
-# 4. Grid Search Optimization (Robust to NAs) ----------------------------------
+# 4. Grid Search Optimization --------------------------------------------------
 calc_f1_robust <- function(ang, tim, hrs, data) {
   pred <- (data$Anglers_Sim >= ang) & (data$Time_Sim >= tim) & (data$Hours_Sim >= hrs)
   pred[is.na(pred)] <- FALSE 
@@ -67,6 +67,7 @@ calc_f1_robust <- function(ang, tim, hrs, data) {
   return(f1)
 }
 
+# create parameter grid to optimize over
 threshold_grid <- expand.grid(
   t_anglers = seq(0, 1, by = 0.2),
   t_time    = seq(min(true_matches$Time_Sim, na.rm = TRUE), 
@@ -75,6 +76,7 @@ threshold_grid <- expand.grid(
                   max(true_matches$Hours_Sim, na.rm = TRUE), by = 0.05)
 )
 
+# calculate f1 scores
 message("Optimizing thresholds...")
 results <- threshold_grid %>%
   mutate(f1_score = pmap_dbl(list(t_anglers, t_time, t_hours), 
@@ -82,7 +84,7 @@ results <- threshold_grid %>%
 
 opt <- results %>% slice_max(f1_score, n = 1, with_ties = FALSE)
 
-# 5. Visualizing Optimization --------------------------------------------------
+# 5. Visualize Optimization ----------------------------------------------------
 plot_data <- results %>% 
   filter(t_anglers <= 0.5) %>% 
   rename("Angler Threshold" = t_anglers)
