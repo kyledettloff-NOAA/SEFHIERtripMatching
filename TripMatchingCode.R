@@ -1,7 +1,7 @@
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Script: SEFHIER Trip Matching & Threshold Optimization
 # Repository: SEFHIERtripMatching
-# Author: Michelle Masi, Kyle Dettloff
+# Authors: Michelle Masi, Kyle Dettloff
 # Dependencies: tidyverse, stringdist
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
