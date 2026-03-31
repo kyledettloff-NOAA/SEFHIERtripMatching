@@ -12,8 +12,8 @@ library(stringdist)
 base_url <- "https://github.com/kyledettloff-NOAA/SEFHIERtripMatching/raw/main/"
 
 # Read in data directly from GitHub
-surveys_list  <- readRDS(url(paste0(base_url, "fake_surveydata.rds")))
 logbooks_list <- readRDS(url(paste0(base_url, "fake_logbookdata.rds")))
+surveys_list  <- readRDS(url(paste0(base_url, "fake_surveydata.rds")))
 
 # 2. Efficient Matching & Robust Feature Engineering ---------------------------
 log_df  <- bind_rows(logbooks_list) %>% rename_with(~paste0("Log_", .x)) %>% mutate(Log_Logbook_RowID = row_number())
