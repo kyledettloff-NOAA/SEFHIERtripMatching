@@ -42,8 +42,8 @@ matched_pool <- inner_join(
 
 # 3. Ground Truth & Evaluation Set ---------------------------------------------
 true_matches <- matched_pool %>%
-  filter((VslNum_Sim >= 1.0 | VslName_Sim >= 1.0),
-         Log_Vessel_Name != "UNNAMED", Surv_Vessel_Name != "UNNAMED") %>%
+  # exclude vessel name matches when "UNNAMED"
+  filter(VslNum_Sim >= 1.0 | VslName_Sim >= 1.0 & Log_Vessel_Name != "UNNAMED" & Surv_Vessel_Name != "UNNAMED") %>%
   mutate(is_match = 1)
 
 eval_df <- matched_pool %>%
