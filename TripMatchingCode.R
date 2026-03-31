@@ -42,9 +42,13 @@ matched_pool <- inner_join(
   mutate(across(ends_with("_Sim"), ~replace_na(.x, 0)))
 
 # 3. Ground Truth & Evaluation Set ---------------------------------------------
+# set threshold
+sim_thres <- 1
+
+# identify true matches
 true_matches <- matched_pool %>%
   # filter to high vessel similarities and exclude vessel name matches when "UNNAMED"
-  filter(VslNum_Sim >= 1.0 | VslName_Sim >= 1.0 & Log_Vessel_Name != "UNNAMED" & Surv_Vessel_Name != "UNNAMED") %>%
+  filter(VslNum_Sim >= sim_thres | VslName_Sim >= sim_thres & Log_Vessel_Name != "UNNAMED" & Surv_Vessel_Name != "UNNAMED") %>%
   mutate(is_match = 1)
 
 eval_df <- matched_pool %>%
