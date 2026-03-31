@@ -16,8 +16,8 @@ surveys_list  <- readRDS(url(paste0(base_url, "fake_surveydata.rds")))
 logbooks_list <- readRDS(url(paste0(base_url, "fake_logbookdata.rds")))
 
 # 2. Efficient Matching & Robust Feature Engineering ---------------------------
-log_df  <- bind_rows(logbooks_list) %>% rename_with(~paste0("Log_", .x))
-surv_df <- bind_rows(surveys_list)  %>% rename_with(~paste0("Surv_", .x))
+log_df  <- bind_rows(logbooks_list) %>% rename_with(~paste0("Log_", .x)) %>% mutate(Log_Logbook_RowID = row_number())
+surv_df <- bind_rows(surveys_list)  %>% rename_with(~paste0("Surv_", .x)) %>% mutate(Surv_Survey_RowID = row_number())
 
 message("Joining datasets and calculating similarity scores...")
 
@@ -46,7 +46,6 @@ matched_pool <- inner_join(
 true_matches <- matched_pool %>%
   filter((VslNum_Sim >= 1.0 | VslName_Sim >= 1.0),
          Log_Vessel_Name != "UNNAMED", Surv_Vessel_Name != "UNNAMED") %>%
-  distinct(Log_Logbook_RowID, Surv_Survey_RowID, .keep_all = TRUE) %>%
   mutate(is_match = 1)
 
 eval_df <- matched_pool %>%
