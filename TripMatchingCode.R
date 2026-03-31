@@ -28,8 +28,6 @@ matched_pool <- inner_join(
 ) %>%
   mutate(
     # Character Similarity (Jaro-Winkler)
-    County_Sim    = stringsim(as.character(Log_County), as.character(Surv_County), method = "jw"),
-    State_Sim     = stringsim(as.character(Log_State), as.character(Surv_State), method = "jw"),
     VslNum_Sim    = stringsim(as.character(Log_Vessel_Official_Num), as.character(Surv_Vessel_Official_Num), method = "jw"),
     VslName_Sim   = stringsim(as.character(Log_Vessel_Name), as.character(Surv_Vessel_Name), method = "jw"),
     
