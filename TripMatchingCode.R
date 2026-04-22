@@ -48,6 +48,8 @@ sim_thres <- 1
 true_matches <- matched_pool %>%
   # filter to high vessel similarities and exclude vessel name matches when "UNNAMED"
   filter(VslNum_Sim >= sim_thres | VslName_Sim >= sim_thres & Log_Vessel_Name != "UNNAMED" & Surv_Vessel_Name != "UNNAMED") %>%
+# keep record with highest time similarity when multiple matches for same vessel on same date
+  group_by(Surv_Survey_RowID) %>% group_by(Surv_Survey_RowID) %>% slice_max(Time_Sim, n = 1, with_ties = FALSE) %>% ungroup() %>%
   mutate(is_match = 1)
 
 eval_df <- matched_pool %>%
