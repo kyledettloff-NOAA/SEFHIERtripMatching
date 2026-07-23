@@ -35,7 +35,7 @@ matched_pool <- inner_join(
     # Continuous Similarity: 1 / (1 + abs(diff))
     # assign 0 similarity if data is missing (NA)
     Anglers_Sim = 1 / (1 + abs(as.numeric(Log_Num_Anglers) - as.numeric(Surv_Num_Anglers))),
-    Caught_Sim  = 1 / (1 + abs(as.numeric(Log_Anything_Caught_Flag) - as.numeric(Surv_Anything_Caught_Flag))),
+    Caught_Sim  = 1 - abs(as.numeric(Log_Anything_Caught_Flag) - as.numeric(Surv_Anything_Caught_Flag)),
     Hours_Sim   = 1 / (1 + abs(as.numeric(Log_Hours_Fished) - as.numeric(Surv_Hours_Fished))),
     Time_Sim    = 1 / (1 + abs(as.numeric(Log_TIME) - as.numeric(Surv_TIME)))
   ) %>%
