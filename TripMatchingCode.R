@@ -69,7 +69,7 @@ site_sim   <- eval_df$Site_Sim
 caught_sim <- eval_df$Caught_Sim
 
 calc_f1 <- function(ang, tim, hrs) {
-  pred <- (a_sim >= ang) & (t_sim >= tim) & (h_sim >= hrs)
+  pred <- (site_sim == 1) & (caught_sim == 1) & (a_sim >= ang) & (t_sim >= tim) & (h_sim >= hrs)
   pred[is.na(pred)] <- FALSE 
   
   tp <- sum(pred & is_m)
