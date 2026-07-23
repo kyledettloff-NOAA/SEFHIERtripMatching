@@ -35,20 +35,23 @@ matched_pool <- inner_join(
     # Continuous Similarity: 1 / (1 + abs(diff))
     # assign 0 similarity if data is missing (NA)
     Anglers_Sim = 1 / (1 + abs(as.numeric(Log_Num_Anglers) - as.numeric(Surv_Num_Anglers))),
-    Caught_Sim  = 1 - abs(as.numeric(Log_Anything_Caught_Flag) - as.numeric(Surv_Anything_Caught_Flag)),
     Hours_Sim   = 1 / (1 + abs(as.numeric(Log_Hours_Fished) - as.numeric(Surv_Hours_Fished))),
-    Time_Sim    = 1 / (1 + abs(as.numeric(Log_TIME) - as.numeric(Surv_TIME)))
+    Time_Sim    = 1 / (1 + abs(as.numeric(Log_TIME) - as.numeric(Surv_TIME))),
+    
+    # Binary Exact-Match Features (1 = Match, 0 = Disagreement)
+    Caught_Sim  = as.numeric(as.character(Log_Anything_Caught_Flag) == as.character(Surv_Anything_Caught_Flag)),
+    Site_Sim    = as.numeric(as.character(Log_State) == as.character(Surv_State) & as.character(Log_County) == as.character(Surv_County))
   ) %>%
   mutate(across(ends_with("_Sim"), ~replace_na(.x, 0)))
 
 # 3. Ground Truth & Evaluation Set ---------------------------------------------
 # set threshold
-sim_thres <- 1
+ves_sim_thres <- 1
 # identify true matches
 true_matches <- matched_pool %>%
   # filter to high vessel similarities and exclude vessel name matches when "UNNAMED"
-  filter(VslNum_Sim >= sim_thres | VslName_Sim >= sim_thres & Log_Vessel_Name != "UNNAMED" & Surv_Vessel_Name != "UNNAMED") %>%
-# keep record with highest time similarity when multiple matches for same vessel on same date
+  filter(VslNum_Sim >= ves_sim_thres | VslName_Sim >= ves_sim_thres & Log_Vessel_Name != "UNNAMED" & Surv_Vessel_Name != "UNNAMED") %>%
+  # keep record with highest time similarity when multiple matches for same vessel on same date
   group_by(Surv_Survey_RowID) %>% slice_max(Time_Sim, n = 1, with_ties = FALSE) %>% ungroup() %>%
   mutate(is_match = 1)
 
@@ -58,19 +61,27 @@ eval_df <- matched_pool %>%
   mutate(is_match = replace_na(is_match, 0))
 
 # 4. Grid Search Optimization --------------------------------------------------
-calc_f1_robust <- function(ang, tim, hrs, data) {
-  pred <- (data$Anglers_Sim >= ang) & (data$Time_Sim >= tim) & (data$Hours_Sim >= hrs)
+is_m       <- eval_df$is_match == 1
+a_sim      <- eval_df$Anglers_Sim
+t_sim      <- eval_df$Time_Sim
+h_sim      <- eval_df$Hours_Sim
+site_sim   <- eval_df$Site_Sim
+caught_sim <- eval_df$Caught_Sim
+
+calc_f1 <- function(ang, tim, hrs) {
+  pred <- (a_sim >= ang) & (t_sim >= tim) & (h_sim >= hrs)
   pred[is.na(pred)] <- FALSE 
   
-  tp <- sum(pred & data$is_match == 1, na.rm = TRUE)
-  fp <- sum(pred & data$is_match == 0, na.rm = TRUE)
-  fn <- sum(!pred & data$is_match == 1, na.rm = TRUE)
+  tp <- sum(pred & is_m)
+  fp <- sum(pred & !is_m)
+  fn <- sum(!pred & is_m)
   
-  precision <- if_else((tp + fp) == 0, 0, tp / (tp + fp))
-  recall    <- if_else((tp + fn) == 0, 0, tp / (tp + fn))
+  if (tp == 0) return(0)
   
-  f1 <- if_else((precision + recall) == 0, 0, 2 * (precision * recall) / (precision + recall))
-  return(f1)
+  precision <- tp / (tp + fp)
+  recall    <- tp / (tp + fn)
+  
+  return(2 * (precision * recall) / (precision + recall))
 }
 
 # create parameter grid to optimize over
@@ -86,7 +97,7 @@ threshold_grid <- expand.grid(
 message("Optimizing thresholds...")
 results <- threshold_grid %>%
   mutate(f1_score = pmap_dbl(list(t_anglers, t_time, t_hours), 
-                             ~calc_f1_robust(..1, ..2, ..3, eval_df)))
+                             ~calc_f1(..1, ..2, ..3)))
 
 opt <- results %>% slice_max(f1_score, n = 1, with_ties = FALSE)
 
