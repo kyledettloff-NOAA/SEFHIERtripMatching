@@ -103,8 +103,8 @@ opt <- results %>% slice_max(f1_score, n = 1, with_ties = FALSE)
 
 # 5. Visualize Optimization ----------------------------------------------------
 plot_data <- results %>% 
-      filter(t_anglers >= pmax(0, opt$t_anglers - 0.2),
-             t_anglers <= pmin(1, opt$t_anglers + 0.2)) %>% 
+      filter(t_anglers >= pmax(0, round(opt$t_anglers, 1) - 0.2),
+             t_anglers <= pmin(1, round(opt$t_anglers, 1) + 0.2)) %>% 
   rename("Angler Threshold" = t_anglers)
 
 ggplot(plot_data, aes(x = t_time, y = t_hours, fill = f1_score)) +
