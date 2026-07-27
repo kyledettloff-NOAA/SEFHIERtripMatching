@@ -28,29 +28,27 @@ matched_pool <- inner_join(
   relationship = "many-to-many"
 ) %>%
   mutate(
-    # Character Similarity (Jaro-Winkler)
-    VslNum_Sim    = stringsim(as.character(Log_Vessel_Official_Num), as.character(Surv_Vessel_Official_Num), method = "jw"),
-    VslName_Sim   = stringsim(as.character(Log_Vessel_Name), as.character(Surv_Vessel_Name), method = "jw"),
+    # Convert times to minutes since midnight for proper subtraction
+    Log_Mins  = as.numeric(Log_TIME) %/% 100 * 60 + as.numeric(Log_TIME) %% 100,
+    Surv_Mins = as.numeric(Surv_TIME) %/% 100 * 60 + as.numeric(Surv_TIME) %% 100,
     
     # Continuous Similarity: 1 / (1 + abs(diff))
-    # assign 0 similarity if data is missing (NA)
     Anglers_Sim = 1 / (1 + abs(as.numeric(Log_Num_Anglers) - as.numeric(Surv_Num_Anglers))),
     Hours_Sim   = 1 / (1 + abs(as.numeric(Log_Hours_Fished) - as.numeric(Surv_Hours_Fished))),
-    Time_Sim    = 1 / (1 + abs(as.numeric(Log_TIME) - as.numeric(Surv_TIME))),
+    Time_Sim    = 1 / (1 + abs(Log_Mins - Surv_Mins) / 60),
     
     # Binary Exact-Match Features (1 = Match, 0 = Disagreement)
     Caught_Sim  = as.numeric(as.character(Log_Anything_Caught_Flag) == as.character(Surv_Anything_Caught_Flag)),
     Site_Sim    = as.numeric(as.character(Log_State) == as.character(Surv_State) & as.character(Log_County) == as.character(Surv_County))
   ) %>%
+  # assign 0 similarity if data is missing (NA)
   mutate(across(ends_with("_Sim"), ~replace_na(.x, 0)))
 
 # 3. Ground Truth & Evaluation Set ---------------------------------------------
-# set threshold
-ves_sim_thres <- 1
 # identify true matches
 true_matches <- matched_pool %>%
-  # filter to high vessel similarities and exclude vessel name matches when "UNNAMED"
-  filter(VslNum_Sim >= ves_sim_thres | VslName_Sim >= ves_sim_thres & Log_Vessel_Name != "UNNAMED" & Surv_Vessel_Name != "UNNAMED") %>%
+  # filter to matching vessel numbers
+  filter(Log_Vessel_Official_Num == Surv_Vessel_Official_Num) %>%
   # keep record with highest time similarity after prioritizing same site when multiple matches for same vessel on same date
   group_by(Surv_Survey_RowID) %>% arrange(desc(Site_Sim), desc(Time_Sim)) %>% slice(1) %>% ungroup() %>%
   mutate(is_match = 1)
@@ -70,7 +68,6 @@ caught_sim <- eval_df$Caught_Sim
 
 calc_f1 <- function(ang, tim, hrs) {
   pred <- (site_sim == 1) & (caught_sim == 1) & (a_sim >= ang) & (t_sim >= tim) & (h_sim >= hrs)
-  pred[is.na(pred)] <- FALSE 
   
   tp <- sum(pred & is_m)
   fp <- sum(pred & !is_m)
@@ -87,14 +84,13 @@ calc_f1 <- function(ang, tim, hrs) {
 # create parameter grid to optimize over
 threshold_grid <- expand.grid(
   t_anglers = seq(0, 1, by = 0.2),
-  t_time    = seq(min(true_matches$Time_Sim, na.rm = TRUE), 
-                  max(true_matches$Time_Sim, na.rm = TRUE), by = 0.05),
-  t_hours   = seq(min(true_matches$Hours_Sim, na.rm = TRUE), 
-                  max(true_matches$Hours_Sim, na.rm = TRUE), by = 0.05)
+  t_time    = seq(0, 1, by = 0.05),
+  t_hours   = seq(0, 1, by = 0.05)
 )
 
 # calculate f1 scores
 message("Optimizing thresholds...")
+
 results <- threshold_grid %>%
   mutate(f1_score = pmap_dbl(list(t_anglers, t_time, t_hours), 
                              ~calc_f1(..1, ..2, ..3)))
