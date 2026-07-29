@@ -33,9 +33,11 @@ matched_pool <- inner_join(
   relationship = "many-to-many"
 ) %>%
   mutate(
+    # Exponential Similarity
+    Anglers_Sim = exp(log(0.8) * abs(as.numeric(Log_Num_Anglers) - as.numeric(Surv_Num_Anglers))),
+    Hours_Sim =   exp(log(0.8) * abs(as.numeric(Log_Hours_Fished) - as.numeric(Surv_Hours_Fished))),
+    
     # Continuous Similarity: 1 / (1 + abs(diff))
-    Anglers_Sim = 1 / (1 + abs(as.numeric(Log_Num_Anglers) - as.numeric(Surv_Num_Anglers))),
-    Hours_Sim   = 1 / (1 + abs(as.numeric(Log_Hours_Fished) - as.numeric(Surv_Hours_Fished))),
     Time_Sim    = 1 / (1 + abs(Log_Mins - Surv_Mins) / 60),
     
     # Binary Exact-Match Features (1 = Match, 0 = Disagreement)
