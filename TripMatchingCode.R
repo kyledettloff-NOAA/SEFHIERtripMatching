@@ -96,7 +96,7 @@ results <- threshold_grid %>%
   mutate(f1_score = pmap_dbl(list(t_anglers, t_time, t_hours), 
                              ~calc_f1(..1, ..2, ..3)))
 
-opt <- results %>% slice_max(f1_score, n = 1, with_ties = FALSE)
+opt <- results %>% arrange(desc(f1_score), desc(t_anglers), desc(t_hours), desc(t_time)) %>% slice(1)
 
 # 5. Visualize Optimization ----------------------------------------------------
 plot_data <- results %>% 
