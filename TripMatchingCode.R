@@ -2,11 +2,10 @@
 # Script: SEFHIER Trip Matching & Threshold Optimization
 # Repository: SEFHIERtripMatching
 # Authors: Michelle Masi, Kyle Dettloff
-# Dependencies: tidyverse, stringdist
+# Dependencies: tidyverse
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 library(tidyverse)
-library(stringdist)
 
 # 1. Data Acquisition ----------------------------------------------------------
 base_url <- "https://github.com/kyledettloff-NOAA/SEFHIERtripMatching/raw/main/"
