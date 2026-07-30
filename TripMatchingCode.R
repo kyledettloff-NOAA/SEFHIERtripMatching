@@ -86,7 +86,7 @@ calc_f1 <- function(ang, tim, hrs) {
 
 # create parameter grid to optimize over
 threshold_grid <- expand.grid(
-  t_anglers = seq(0, 1, by = 0.2),
+  t_anglers = seq(0, 1, by = 0.05),
   t_time    = seq(0, 1, by = 0.05),
   t_hours   = seq(0, 1, by = 0.05)
 )
@@ -102,8 +102,8 @@ opt <- results %>% arrange(desc(f1_score), desc(t_anglers), desc(t_hours), desc(
 
 # 5. Visualize Optimization ----------------------------------------------------
 plot_data <- results %>% 
-      filter(t_anglers >= pmax(0, round(opt$t_anglers, 1) - 0.2),
-             t_anglers <= pmin(1, round(opt$t_anglers, 1) + 0.2)) %>% 
+      filter(t_anglers >= pmax(0, round(opt$t_anglers, 1) - 0.1),
+             t_anglers <= pmin(1, round(opt$t_anglers, 1) + 0.1)) %>% 
   rename("Angler Threshold" = t_anglers)
 
 ggplot(plot_data, aes(x = t_time, y = t_hours, fill = f1_score)) +
