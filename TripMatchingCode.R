@@ -41,7 +41,6 @@ matched_pool <- inner_join(
     Time_Sim    = 1 / (1 + abs(Log_Mins - Surv_Mins) / 60),
     
     # Binary Exact-Match Features (1 = Match, 0 = Disagreement)
-    Caught_Sim  = as.numeric(as.character(Log_Anything_Caught_Flag) == as.character(Surv_Anything_Caught_Flag)),
     Site_Sim    = as.numeric(as.character(Log_State) == as.character(Surv_State) & as.character(Log_County) == as.character(Surv_County))
   ) %>%
   # assign 0 similarity if data is missing (NA)
@@ -53,28 +52,47 @@ true_matches <- matched_pool %>%
   # filter to matching vessel numbers
   filter(Log_Vessel_Official_Num == Surv_Vessel_Official_Num) %>%
   # keep record with highest time similarity after prioritizing same site when multiple matches for same vessel on same date
-  group_by(Surv_Survey_RowID) %>% arrange(desc(Site_Sim), desc(Time_Sim)) %>% slice(1) %>% ungroup() %>%
+  arrange(Surv_Survey_RowID, desc(Site_Sim), desc(Time_Sim), desc(Anglers_Sim), desc(Hours_Sim)) %>%
+  slice_head(n = 1, by = Surv_Survey_RowID) %>%
   mutate(is_match = 1)
 
 eval_df <- matched_pool %>%
+  # require site to match for optimization of other thresholds
+  filter(Site_Sim == 1) %>%
   left_join(select(true_matches, Log_Logbook_RowID, Surv_Survey_RowID, is_match), 
             by = c("Log_Logbook_RowID", "Surv_Survey_RowID")) %>%
   mutate(is_match = replace_na(is_match, 0))
 
 # 4. Grid Search Optimization --------------------------------------------------
-is_m       <- eval_df$is_match == 1
-a_sim      <- eval_df$Anglers_Sim
-t_sim      <- eval_df$Time_Sim
-h_sim      <- eval_df$Hours_Sim
-site_sim   <- eval_df$Site_Sim
-caught_sim <- eval_df$Caught_Sim
+# Pre-extract atomic vectors to eliminate data frame creation overhead during the optimization
+surv_ids <- eval_df$Surv_Survey_RowID
+a_sim    <- eval_df$Anglers_Sim
+t_sim    <- eval_df$Time_Sim
+h_sim    <- eval_df$Hours_Sim
+is_m     <- eval_df$is_match
+tm       <- nrow(true_matches)
 
 calc_f1 <- function(ang, tim, hrs) {
-  pred <- (site_sim == 1) & (caught_sim == 1) & (a_sim >= ang) & (t_sim >= tim) & (h_sim >= hrs)
+  # filter candidates by thresholds
+  idx <- which(a_sim >= ang & t_sim >= tim & h_sim >= hrs)
   
-  tp <- sum(pred & is_m)
-  fp <- sum(pred & !is_m)
-  fn <- sum(!pred & is_m)
+  if (length(idx) == 0) return(0)
+  
+  surv_sub <- surv_ids[idx]
+  t_sub    <- t_sim[idx]
+  a_sub    <- a_sim[idx]
+  h_sub    <- h_sim[idx]
+  m_sub    <- is_m[idx]
+  
+  # de-duplicate surviving candidates
+  ord      <- order(surv_sub, -t_sub, -a_sub, -h_sub, na.last = TRUE)
+  surv_ord <- surv_sub[ord]
+  keep     <- !duplicated(surv_ord)
+  m_final  <- m_sub[ord][keep]
+  
+  tp <- sum(m_final == 1)
+  fp <- sum(m_final == 0)
+  fn <- tm - tp
   
   if (tp == 0) return(0)
   
@@ -86,7 +104,7 @@ calc_f1 <- function(ang, tim, hrs) {
 
 # create parameter grid to optimize over
 threshold_grid <- expand.grid(
-  t_anglers = seq(0, 1, by = 0.05),
+  t_anglers = seq(0, 1, by = 0.2),
   t_time    = seq(0, 1, by = 0.05),
   t_hours   = seq(0, 1, by = 0.05)
 )
@@ -100,19 +118,29 @@ results <- threshold_grid %>%
 
 opt <- results %>% arrange(desc(f1_score), desc(t_anglers), desc(t_hours), desc(t_time)) %>% slice(1)
 
+# Apply optimal thresholds to obtain the matched set
+full_matches <- eval_df %>%
+  filter(Anglers_Sim >= opt$t_anglers, Time_Sim >= opt$t_time, Hours_Sim >= opt$t_hours) %>%
+  # apply same tiebreaking logic as used in the optimization step
+  arrange(Surv_Survey_RowID, desc(Time_Sim), desc(Anglers_Sim), desc(Hours_Sim)) %>% slice_head(n = 1, by = Surv_Survey_RowID)
+
 # 5. Visualize Optimization ----------------------------------------------------
 plot_data <- results %>% 
-      filter(t_anglers >= pmax(0, round(opt$t_anglers, 1) - 0.1),
-             t_anglers <= pmin(1, round(opt$t_anglers, 1) + 0.1)) %>% 
+  filter(round(t_anglers / 0.2, 5) %% 1 == 0) %>%
   rename("Angler Threshold" = t_anglers)
 
 ggplot(plot_data, aes(x = t_time, y = t_hours, fill = f1_score)) +
   geom_tile() +
-  scale_fill_viridis_c(option = "magma", name = "F1 Score") +
+  scale_fill_gradient2(
+    low = "#2c7bb6", mid = "#ffffbf", high = "#d7191c",
+    # center contrast around 40th %ile score
+    midpoint = quantile(plot_data$f1_score, probs = 0.4, na.rm = TRUE),
+    name = "F1 Score"
+  ) +
   facet_wrap(~`Angler Threshold`, labeller = label_both, ncol = 1) +
   geom_point(data = opt %>% rename("Angler Threshold" = t_anglers),
              aes(x = t_time, y = t_hours), 
-             color = "cyan", shape = 8, size = 3, stroke = 1.5) +
+             color = "black", shape = 8, size = 3.5, stroke = 1.5) +
   theme_bw(base_size = 12) + 
   theme(
     panel.grid       = element_blank(),
@@ -127,6 +155,15 @@ ggplot(plot_data, aes(x = t_time, y = t_hours, fill = f1_score)) +
     caption = paste0("Global Optimal F1: ", round(opt$f1_score, 3))
   )
 
-# 6. Final Outputs -------------------------------------------------------------
-cat("\n--- Final Model Results ---\n")
+# 6. Final Outputs and Diagnostics -------------------------------------------------------------
+cat("\n--- Optimal Thresholds ---\n")
 print(opt)
+
+# Calculate error rates
+tp <- sum(full_matches$is_match == 1)
+fp <- sum(full_matches$is_match == 0)
+
+fmr  <- fp / nrow(full_matches)  # False Match Rate (1 - Precision)
+fnmr <- (tm - tp) / tm           # False Non-Match Rate (1 - Recall)
+
+cat(sprintf("\nMatches: %d | FMR: %.2f%% | FNMR: %.2f%%\n", nrow(full_matches), fmr * 100, fnmr * 100))
