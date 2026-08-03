@@ -203,10 +203,6 @@ p2 <- ggplot() +
     mid = "white",
     high = "#2c7bb6",
     midpoint = 1,
-    limits = c(min(0.5, min(top_f1_data$match_ratio, na.rm = TRUE)),
-               max(1.5, max(top_f1_data$match_ratio, na.rm = TRUE))),
-    breaks = c(0.5, 1, 1.5),
-    oob = scales::squish,
     name = "True Match Ratio"
   ) +
   facet_wrap(~`Angler Threshold`, labeller = label_both, ncol = 1) +
@@ -250,12 +246,6 @@ p3 <- ggplot(top_f1_data, aes(x = percent_bias)) +
     mid = "white",
     high = "#2c7bb6",
     midpoint = 1,
-    limits = c(
-      min(0.5, min(top_f1_data$match_ratio, na.rm = TRUE)),
-      max(1.5, max(top_f1_data$match_ratio, na.rm = TRUE))
-    ),
-    breaks = c(0.5, 1, 1.5),
-    oob = scales::squish,
     name = "True Match Ratio"
   ) +
   scale_x_continuous(
