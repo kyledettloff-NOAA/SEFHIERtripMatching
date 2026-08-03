@@ -141,7 +141,7 @@ plot_data <- results %>%
   rename("Angler Threshold" = t_anglers)
 
 # F1 score
-ggplot(plot_data, aes(x = t_time, y = t_hours, fill = f1_score)) +
+p1 <- ggplot(plot_data, aes(x = t_time, y = t_hours, fill = f1_score)) +
   geom_tile() +
   scale_fill_gradient2(
     low = "#2c7bb6", mid = "#ffffbf", high = "#d7191c",
@@ -186,7 +186,7 @@ top_f1_data <- plot_data %>%
          percent_bias = (1 / match_ratio - 1) * 100)
 
 # number of matches relative to actual within core F1 range
-ggplot() +
+p2 <- ggplot() +
   # Base layer: draw all tiles in light grey for the cut-out combinations
   geom_tile(
     data = plot_data %>% filter(`Angler Threshold` == opt$t_anglers),
@@ -230,7 +230,7 @@ ggplot() +
   )
 
 # distribution of bias introduced
-ggplot(top_f1_data, aes(x = percent_bias)) +
+p3 <- ggplot(top_f1_data, aes(x = percent_bias)) +
   geom_histogram(
     aes(
       y = after_stat(count / sum(count)), 
@@ -287,6 +287,8 @@ ggplot(top_f1_data, aes(x = percent_bias)) +
 cat("\n--- Optimal Thresholds ---\n")
 print(opt)
 
+print(p1)
+
 # Calculate error rates
 tp <- sum(full_matches$is_match == 1)
 fp <- sum(full_matches$is_match == 0)
@@ -295,3 +297,6 @@ fmr  <- fp / nrow(full_matches)  # False Match Rate (1 - Precision)
 fnmr <- (tm - tp) / tm           # False Non-Match Rate (1 - Recall)
 
 cat(sprintf("\nMatches: %d | FMR: %.2f%% | FNMR: %.2f%%\n", nrow(full_matches), fmr * 100, fnmr * 100))
+
+print(p2)
+print(p3)
