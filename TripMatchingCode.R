@@ -64,7 +64,7 @@ eval_df <- matched_pool %>%
   mutate(is_match = replace_na(is_match, 0))
 
 # 4. Grid Search Optimization --------------------------------------------------
-# Pre-extract atomic vectors to eliminate data frame creation overhead during the optimization
+# Vectorize data inputs for faster optimization
 surv_ids <- eval_df$Surv_Survey_RowID
 a_sim    <- eval_df$Anglers_Sim
 t_sim    <- eval_df$Time_Sim
