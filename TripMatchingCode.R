@@ -223,7 +223,7 @@ results <- threshold_grid %>%
 opt <- results %>% arrange(desc(f1_score), desc(t_anglers), desc(t_hours), desc(t_time)) %>% slice(1)
 
 # Apply optimal thresholds to obtain the matched set
-full_matches <- eval_df %>%
+opt_matches <- eval_df %>%
   filter(Anglers_Sim >= opt$t_anglers, Time_Sim >= opt$t_time, Hours_Sim >= opt$t_hours) %>%
   # apply same tiebreaking logic as used in the optimization step
   arrange(Surv_Survey_RowID, desc(Time_Sim), desc(Anglers_Sim), desc(Hours_Sim)) %>%
@@ -374,13 +374,13 @@ print(opt)
 print(p3)
 
 # Calculate error rates
-tp <- sum(full_matches$is_match == 1)
-fp <- sum(full_matches$is_match == 0)
+tp <- sum(opt_matches$is_match == 1)
+fp <- sum(opt_matches$is_match == 0)
 
-fmr  <- fp / nrow(full_matches)  # False Match Rate (1 - Precision)
+fmr  <- fp / nrow(opt_matches)  # False Match Rate (1 - Precision)
 fnmr <- (tm - tp) / tm           # False Non-Match Rate (1 - Recall)
 
-cat(sprintf("\nMatches: %d | FMR: %.2f%% | FNMR: %.2f%%\n", nrow(full_matches), fmr * 100, fnmr * 100))
+cat(sprintf("\nMatches: %d | FMR: %.2f%% | FNMR: %.2f%%\n", nrow(opt_matches), fmr * 100, fnmr * 100))
 
 print(p4)
 print(p5)
