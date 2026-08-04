@@ -70,14 +70,12 @@ plot_fig1 <- eval_df %>%
   summarize(
     Candidate_Count = n(),
     Is_True_Match_Present = if_else(any(is_match == 1), "True Match Found", "No Match in Pool")
-  ) %>%
-  mutate(Is_True_Match_Present = factor(Is_True_Match_Present, levels = c("No Match in Pool", "True Match Found")))
+  )
 
 p1 <- ggplot(plot_fig1, aes(x = Candidate_Count, fill = Is_True_Match_Present)) +
   geom_histogram(binwidth = 5, color = "white", linewidth = 0.3) +
   scale_fill_manual(
     values = c("True Match Found" = "black", "No Match in Pool" = "gray75"),
-    breaks = c("No Match in Pool", "True Match Found"),
     name = NULL 
   ) +
   labs(
@@ -92,14 +90,13 @@ p1 <- ggplot(plot_fig1, aes(x = Candidate_Count, fill = Is_True_Match_Present)) 
     axis.title.y = element_text(face = "bold", size = 14, margin = margin(r = 12)),
     axis.text = element_text(color = "black", size = 14),
     legend.position = "inside",
-    legend.position.inside = c(0.70, 0.82),
+    legend.position.inside = c(0.70, 0.80),
     legend.background = element_rect(fill = "white", color = "black", linewidth = 0.8),
     legend.key.size = unit(1.2, "lines"),
     legend.text = element_text(size = 14),
     legend.title = element_text(face = "bold", size = 14),
     panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8)
   )
-
 
 # Signal-to-Noise Overlap Plot (Fig. 2) ---------------------------------
 plot_fig2 <- eval_df %>%
