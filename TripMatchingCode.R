@@ -69,8 +69,7 @@ plot_fig1 <- eval_df %>%
   group_by(Surv_Survey_RowID) %>%
   summarize(
     Candidate_Count = n(),
-    Is_True_Match_Present = if_else(any(is_match == 1), "True Match Found", "No Match in Pool"),
-    .groups = "drop"
+    Is_True_Match_Present = if_else(any(is_match == 1), "True Match Found", "No Match in Pool")
   ) %>%
   mutate(Is_True_Match_Present = factor(Is_True_Match_Present, levels = c("No Match in Pool", "True Match Found")))
 
