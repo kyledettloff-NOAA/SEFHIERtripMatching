@@ -378,7 +378,7 @@ tp <- sum(opt_matches$is_match == 1)
 fp <- sum(opt_matches$is_match == 0)
 
 fmr  <- fp / nrow(opt_matches)  # False Match Rate (1 - Precision)
-fnmr <- (tm - tp) / tm           # False Non-Match Rate (1 - Recall)
+fnmr <- (tm - tp) / tm          # False Non-Match Rate (1 - Recall)
 
 cat(sprintf("\nMatches: %d | FMR: %.2f%% | FNMR: %.2f%%\n", nrow(opt_matches), fmr * 100, fnmr * 100))
 
