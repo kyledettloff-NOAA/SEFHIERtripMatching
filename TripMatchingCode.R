@@ -63,6 +63,104 @@ eval_df <- matched_pool %>%
             by = c("Log_Logbook_RowID", "Surv_Survey_RowID")) %>%
   mutate(is_match = replace_na(is_match, 0))
 
+### Diagnostic plots
+# Candidate Pool Sizes Plot (Fig. 1) -----------------------------------
+plot_fig1 <- eval_df %>%
+  group_by(Surv_Survey_RowID) %>%
+  summarize(
+    Candidate_Count = n(),
+    Is_True_Match_Present = if_else(any(is_match == 1), "True Match Found", "No Match in Pool"),
+    .groups = "drop"
+  ) %>%
+  mutate(Is_True_Match_Present = factor(Is_True_Match_Present, levels = c("No Match in Pool", "True Match Found")))
+
+p1 <- ggplot(plot_fig1, aes(x = Candidate_Count, fill = Is_True_Match_Present)) +
+  geom_histogram(binwidth = 5, color = "white", linewidth = 0.3) +
+  scale_fill_manual(
+    values = c("True Match Found" = "black", "No Match in Pool" = "gray75"),
+    breaks = c("No Match in Pool", "True Match Found"),
+    name = NULL 
+  ) +
+  labs(
+    x = "Candidate Pool Size (Logbooks per Survey)",
+    y = "Number of Surveys"
+  ) +
+  theme_bw(base_size = 14) +
+  theme(
+    panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank(),
+    axis.title.x = element_text(face = "bold", size = 14, margin = margin(t = 12)),
+    axis.title.y = element_text(face = "bold", size = 14, margin = margin(r = 12)),
+    axis.text = element_text(color = "black", size = 14),
+    legend.position = "inside",
+    legend.position.inside = c(0.70, 0.82),
+    legend.background = element_rect(fill = "white", color = "black", linewidth = 0.8),
+    legend.key.size = unit(1.2, "lines"),
+    legend.text = element_text(size = 14),
+    legend.title = element_text(face = "bold", size = 14),
+    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8)
+  )
+
+
+# Signal-to-Noise Overlap Plot (Fig. 2) ---------------------------------
+plot_fig2 <- eval_df %>%
+  select(is_match, Anglers = Anglers_Sim, Hours = Hours_Sim, `Trip Time` = Time_Sim) %>%
+  pivot_longer(
+    cols = c(Anglers, Hours, `Trip Time`),
+    names_to = "Variable",
+    values_to = "SimilarityScore"
+  ) %>%
+  mutate(
+    Variable = case_when(
+      Variable == "Anglers" ~ "Number of Anglers",
+      Variable == "Hours"   ~ "Hours Fished",
+      .default = Variable
+    ),
+    Variable = factor(Variable, levels = c("Number of Anglers", "Hours Fished", "Trip Time")),
+    Category = if_else(is_match == 1, "True Match", "Potential Mismatch")
+  )
+
+p2 <- ggplot(plot_fig2, aes(x = SimilarityScore, fill = Category)) +
+  geom_histogram(
+    aes(y = after_stat(count / ave(count, PANEL, group, FUN = sum))),
+    position = position_dodge(width = 0.05),
+    binwidth = 0.05,
+    boundary = 0,
+    closed = "left",
+    alpha = 1.0,
+    color = "white",
+    linewidth = 0.3
+  ) +
+  facet_wrap(~Variable, scales = "fixed", ncol = 1, axes = "all_x") +
+  scale_y_continuous(
+    limits = c(0, 1.0),
+    breaks = seq(0, 1, by = 0.20),
+    expand = expansion(mult = c(0, 0.02))
+  ) +
+  scale_fill_manual(values = c("True Match" = "black", "Potential Mismatch" = "gray65")) +
+  labs(x = "Similarity Score", y = "Proportion", fill = "") +
+  theme_classic(base_size = 14) +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    strip.text = element_text(face = "bold", size = 14, margin = margin(b = 10)),
+    strip.background = element_blank(),
+    axis.text.x = element_text(color = "black", size = 14, face = "plain"),
+    axis.text.y = element_text(color = "black", size = 14),
+    axis.title.x = element_text(face = "bold", size = 14, margin = margin(t = 12)),
+    axis.title.y = element_text(face = "bold", size = 14, margin = margin(r = 12)),
+    axis.line = element_line(color = "black", linewidth = 0.8),
+    axis.ticks = element_line(color = "black", linewidth = 0.8),
+    panel.spacing = unit(1.5, "lines"),
+    legend.position = "bottom",
+    legend.text = element_text(size = 14),
+    legend.title = element_text(face = "bold", size = 14),
+    legend.key.size = unit(1.2, "lines")
+  )
+
+print(p1)
+print(p2)
+
 # 4. Grid Search Optimization --------------------------------------------------
 # Vectorize data inputs for faster optimization
 surv_ids <- eval_df$Surv_Survey_RowID
@@ -141,7 +239,7 @@ plot_data <- results %>%
   rename("Angler Threshold" = t_anglers)
 
 # F1 score
-p1 <- ggplot(plot_data, aes(x = t_time, y = t_hours, fill = f1_score)) +
+p3 <- ggplot(plot_data, aes(x = t_time, y = t_hours, fill = f1_score)) +
   geom_tile() +
   scale_fill_gradient2(
     low = "#2c7bb6", mid = "#ffffbf", high = "#d7191c",
@@ -186,7 +284,7 @@ top_f1_data <- plot_data %>%
          percent_bias = (1 / match_ratio - 1) * 100)
 
 # number of matches relative to actual within core F1 range
-p2 <- ggplot() +
+p4 <- ggplot() +
   # Base layer: draw all tiles in light grey for the cut-out combinations
   geom_tile(
     data = plot_data %>% filter(`Angler Threshold` == opt$t_anglers),
@@ -226,7 +324,7 @@ p2 <- ggplot() +
   )
 
 # distribution of bias introduced
-p3 <- ggplot(top_f1_data, aes(x = percent_bias)) +
+p5 <- ggplot(top_f1_data, aes(x = percent_bias)) +
   geom_histogram(
     aes(
       y = after_stat(count / sum(count)), 
@@ -277,7 +375,7 @@ p3 <- ggplot(top_f1_data, aes(x = percent_bias)) +
 cat("\n--- Optimal Thresholds ---\n")
 print(opt)
 
-print(p1)
+print(p3)
 
 # Calculate error rates
 tp <- sum(full_matches$is_match == 1)
@@ -288,5 +386,5 @@ fnmr <- (tm - tp) / tm           # False Non-Match Rate (1 - Recall)
 
 cat(sprintf("\nMatches: %d | FMR: %.2f%% | FNMR: %.2f%%\n", nrow(full_matches), fmr * 100, fnmr * 100))
 
-print(p2)
-print(p3)
+print(p4)
+print(p5)
