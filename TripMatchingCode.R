@@ -251,7 +251,7 @@ p3 <- ggplot(plot_data, aes(x = t_time, y = t_hours, fill = f1_score)) +
   geom_point(data = opt %>% rename("Angler Threshold" = t_anglers),
              aes(x = t_time, y = t_hours), 
              color = "black", shape = 8, size = 3.5, stroke = 1.5) +
-  theme_bw(base_size = 12) + 
+  theme_bw(base_size = 13) + 
   theme(
     panel.grid       = element_blank(),
     strip.background = element_rect(fill = "white"),
@@ -309,7 +309,7 @@ p4 <- ggplot() +
     aes(x = t_time, y = t_hours), 
     color = "black", shape = 8, size = 3.5, stroke = 1.5
   ) +
-  theme_bw(base_size = 13) + 
+  theme_bw(base_size = 14) + 
   theme(
     panel.grid       = element_blank(),
     strip.background = element_rect(fill = "white"),
@@ -354,7 +354,7 @@ p5 <- ggplot(top_f1_data, aes(x = percent_bias)) +
     n.breaks = 8,
     labels = scales::percent_format(accuracy = 1)
   ) +
-  theme_bw(base_size = 13) +
+  theme_bw(base_size = 14) +
   theme(
     panel.grid      = element_blank(),
     plot.title      = element_text(face = "bold"),
