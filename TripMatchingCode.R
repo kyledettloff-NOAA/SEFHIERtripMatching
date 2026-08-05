@@ -52,6 +52,7 @@ true_matches <- matched_pool %>%
   slice_head(n = 1, by = Surv_Survey_RowID) %>%
   mutate(is_match = 1)
 
+# create dataframe for optimal F1 evaluation in absense of unique ID
 eval_df <- matched_pool %>%
   # require site to match for optimization of other thresholds
   filter(Site_Sim == 1) %>%
@@ -61,6 +62,7 @@ eval_df <- matched_pool %>%
 
 ### Diagnostic plots
 # Candidate Pool Sizes Plot (Fig. 1) -----------------------------------
+# count number of potential logbook matches per survey and identify if true match was found in set
 plot_fig1 <- eval_df %>%
   group_by(Surv_Survey_RowID) %>%
   summarize(
@@ -68,6 +70,7 @@ plot_fig1 <- eval_df %>%
     Is_True_Match_Present = if_else(any(is_match == 1), "True Match Found", "No Match in Pool")
   )
 
+# plot stacked histogram
 p1 <- ggplot(plot_fig1, aes(x = Candidate_Count, fill = Is_True_Match_Present)) +
   geom_histogram(binwidth = 5, color = "white", linewidth = 0.3) +
   scale_fill_manual(
@@ -95,6 +98,7 @@ p1 <- ggplot(plot_fig1, aes(x = Candidate_Count, fill = Is_True_Match_Present)) 
   )
 
 # Signal-to-Noise Overlap Plot (Fig. 2) ---------------------------------
+# prepare data to generate distribution of similarity scores by "match" status
 plot_fig2 <- eval_df %>%
   select(is_match, Anglers = Anglers_Sim, Hours = Hours_Sim, `Trip Time` = Time_Sim) %>%
   pivot_longer(
@@ -112,6 +116,7 @@ plot_fig2 <- eval_df %>%
     Category = if_else(is_match == 1, "True Match", "Potential Mismatch")
   )
 
+# plot dodged histograms in single-column panel
 p2 <- ggplot(plot_fig2, aes(x = SimilarityScore, fill = Category)) +
   geom_histogram(
     aes(y = after_stat(count / ave(count, PANEL, group, FUN = sum))),
@@ -154,7 +159,7 @@ print(p1)
 print(p2)
 
 # 4. Grid Search Optimization --------------------------------------------------
-# Vectorize data inputs for faster optimization
+# vectorize data inputs for faster optimization
 surv_ids <- eval_df$Surv_Survey_RowID
 a_sim    <- eval_df$Anglers_Sim
 t_sim    <- eval_df$Time_Sim
@@ -192,7 +197,8 @@ calc_f1 <- function(ang, tim, hrs) {
   if (tp == 0) {
     return(c(f1_score = 0, n_matches = total_matches))
   }
-  
+
+  # calculate F1 score
   precision <- tp / (tp + fp)
   recall    <- tp / (tp + fn)
   f1        <- 2 * (precision * recall) / (precision + recall)
@@ -207,7 +213,7 @@ threshold_grid <- expand.grid(
   t_hours   = seq(0, 1, by = 0.01)
 )
 
-# calculate f1 scores
+# calculate F1 scores across full grid
 message("Optimizing thresholds...")
 
 results <- threshold_grid %>%
@@ -216,9 +222,10 @@ results <- threshold_grid %>%
              ~calc_f1(..1, ..2, ..3))
   )
 
+# get optimal thresholds
 opt <- results %>% arrange(desc(f1_score), desc(t_anglers), desc(t_hours), desc(t_time)) %>% slice(1)
 
-# Apply optimal thresholds to obtain the matched set
+# apply optimal thresholds to obtain the matched set
 opt_matches <- eval_df %>%
   filter(Anglers_Sim >= opt$t_anglers, Time_Sim >= opt$t_time, Hours_Sim >= opt$t_hours) %>%
   # apply same tiebreaking logic as used in the optimization step
@@ -226,11 +233,12 @@ opt_matches <- eval_df %>%
   slice_head(n = 1, by = Surv_Survey_RowID)
 
 # 5. Visualize Optimization ----------------------------------------------------
+# filter data to plot for heatmap
 plot_data <- results %>% 
   filter(round(t_anglers / 0.2, 5) %% 1 == 0) %>%
   rename("Angler Threshold" = t_anglers)
 
-# F1 score
+# plot F1 score heatmap
 p3 <- ggplot(plot_data, aes(x = t_time, y = t_hours, fill = f1_score)) +
   geom_tile() +
   scale_fill_gradient2(
@@ -275,7 +283,7 @@ top_f1_data <- plot_data %>%
   mutate(match_ratio = n_matches / tm,
          percent_bias = (1 / match_ratio - 1) * 100)
 
-# number of matches relative to actual within core F1 range
+# plot number of matches relative to actual within core F1 range
 p4 <- ggplot() +
   # Base layer: draw all tiles in light grey for the cut-out combinations
   geom_tile(
@@ -315,7 +323,7 @@ p4 <- ggplot() +
     caption = paste0("Matches at Optimal F1 Threshold: ", opt$n_matches, " (Ratio: ", round(opt$n_matches / tm, 2), ")")
   )
 
-# distribution of bias introduced
+# plot distribution of bias introduced
 p5 <- ggplot(top_f1_data, aes(x = percent_bias)) +
   geom_histogram(
     aes(
@@ -327,9 +335,9 @@ p5 <- ggplot(top_f1_data, aes(x = percent_bias)) +
     color = "gray30", 
     alpha = 0.9
   ) +
-  # Secondary reference lines at +/- 5%
+  # secondary reference lines at +/- 5%
   geom_vline(xintercept = c(-5, 5), linetype = "dashed", color = "gray40", linewidth = 0.5) +
-  # Reference line at 0% bias
+  # reference line at 0% bias
   geom_vline(xintercept = 0, linetype = "dashed", color = "black", linewidth = 0.8) +
   scale_fill_gradient2(
     low = "#d7191c",
