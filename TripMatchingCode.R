@@ -16,13 +16,9 @@ surveys_list  <- readRDS(url(paste0(base_url, "fake_surveydata.rds")))
 
 # combine lists into dataframes and assign unique row numbers
 log_df  <- bind_rows(logbooks_list) %>% rename_with(~paste0("Log_", .x)) %>%
-  mutate(Log_Logbook_RowID = row_number(),
-         # Convert time to minutes since midnight for proper subtraction
-         Log_Mins  = as.numeric(Log_TIME) %/% 100 * 60 + as.numeric(Log_TIME) %% 100)
+  mutate(Log_Logbook_RowID = row_number())
 surv_df <- bind_rows(surveys_list)  %>% rename_with(~paste0("Surv_", .x)) %>%
-  mutate(Surv_Survey_RowID = row_number(),
-         # Convert time to minutes since midnight for proper subtraction
-         Surv_Mins = as.numeric(Surv_TIME) %/% 100 * 60 + as.numeric(Surv_TIME) %% 100)
+  mutate(Surv_Survey_RowID = row_number())
 
 # 2. Match Logbook and Survey Data by Date -------------------------------------
 message("Joining datasets and calculating similarity scores...")
