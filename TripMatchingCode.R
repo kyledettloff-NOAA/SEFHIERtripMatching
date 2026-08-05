@@ -10,7 +10,7 @@ library(tidyverse)
 # 1. Data Acquisition ----------------------------------------------------------
 base_url <- "https://github.com/kyledettloff-NOAA/SEFHIERtripMatching/raw/main/"
 
-# Read in data directly from GitHub
+# read in data directly from GitHub
 logbooks_list <- readRDS(url(paste0(base_url, "fake_logbookdata.rds")))
 surveys_list  <- readRDS(url(paste0(base_url, "fake_surveydata.rds")))
 
@@ -29,14 +29,14 @@ matched_pool <- inner_join(
   relationship = "many-to-many"
 ) %>%
   mutate(
-    # Exponential Similarity
+    # exponential similarity
     Anglers_Sim = exp(log(0.8) * abs(as.numeric(Log_Num_Anglers) - as.numeric(Surv_Num_Anglers))),
-    Hours_Sim =   exp(log(0.8) * abs(as.numeric(Log_Hours_Fished) - as.numeric(Surv_Hours_Fished))),
+    Hours_Sim   = exp(log(0.8) * abs(as.numeric(Log_Hours_Fished) - as.numeric(Surv_Hours_Fished))),
     
-    # Continuous Similarity: 1 / (1 + abs(diff))
+    # continuous similarity: 1 / (1 + abs(diff))
     Time_Sim    = 1 / (1 + abs(Log_Mins - Surv_Mins) / 60),
     
-    # Binary Exact-Match Features (1 = Match, 0 = Disagreement)
+    # binary exact-match (1 = Match, 0 = Disagreement)
     Site_Sim    = as.numeric(as.character(Log_State) == as.character(Surv_State) & as.character(Log_County) == as.character(Surv_County))
   ) %>%
   # assign 0 similarity if data is missing (NA)
@@ -52,7 +52,7 @@ true_matches <- matched_pool %>%
   slice_head(n = 1, by = Surv_Survey_RowID) %>%
   mutate(is_match = 1)
 
-# create dataframe for optimal F1 evaluation in absense of unique ID
+# create dataframe for optimal F1 evaluation in absence of unique ID
 eval_df <- matched_pool %>%
   # require site to match for optimization of other thresholds
   filter(Site_Sim == 1) %>%
@@ -197,7 +197,7 @@ calc_f1 <- function(ang, tim, hrs) {
   if (tp == 0) {
     return(c(f1_score = 0, n_matches = total_matches))
   }
-
+  
   # calculate F1 score
   precision <- tp / (tp + fp)
   recall    <- tp / (tp + fn)
@@ -377,7 +377,7 @@ print(opt)
 
 print(p3)
 
-# Calculate error rates
+# calculate error rates
 tp <- sum(opt_matches$is_match == 1)
 fp <- sum(opt_matches$is_match == 0)
 
