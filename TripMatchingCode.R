@@ -42,23 +42,23 @@ true_matches <- matched_pool %>%
   # filter to matching vessel numbers
   filter(Log_Vessel_Official_Num == Surv_Vessel_Official_Num) %>%
   # keep record with highest time similarity after prioritizing same site when multiple matches for same vessel on same date
-  arrange(Surv_Survey_RowID, desc(Site_Sim), desc(Time_Sim), desc(Anglers_Sim), desc(Hours_Sim)) %>%
-  slice_head(n = 1, by = Surv_Survey_RowID) %>%
+  arrange(Survey_RowID, desc(Site_Sim), desc(Time_Sim), desc(Anglers_Sim), desc(Hours_Sim)) %>%
+  slice_head(n = 1, by = Survey_RowID) %>%
   mutate(is_match = 1)
 
 # create dataframe for optimal F1 evaluation in absence of unique ID
 eval_df <- matched_pool %>%
   # require site to match for optimization of other thresholds
   filter(Site_Sim == 1) %>%
-  left_join(select(true_matches, Log_Logbook_RowID, Surv_Survey_RowID, is_match), 
-            by = c("Log_Logbook_RowID", "Surv_Survey_RowID")) %>%
+  left_join(select(true_matches, Logbook_RowID, Survey_RowID, is_match), 
+            by = c("Logbook_RowID", "Survey_RowID")) %>%
   mutate(is_match = replace_na(is_match, 0))
 
 ### Diagnostic plots
 # Candidate Pool Sizes Plot (Fig. 1) -----------------------------------
 # count number of potential logbook matches per survey and identify if true match was found in set
 plot_fig1 <- eval_df %>%
-  group_by(Surv_Survey_RowID) %>%
+  group_by(Survey_RowID) %>%
   summarize(
     Candidate_Count = n(),
     Is_True_Match_Present = if_else(any(is_match == 1), "True Match Found", "No Match in Pool")
@@ -154,7 +154,7 @@ print(p2)
 
 # 4. Grid Search Optimization --------------------------------------------------
 # vectorize data inputs for faster optimization
-surv_ids <- eval_df$Surv_Survey_RowID
+surv_ids <- eval_df$Survey_RowID
 a_sim    <- eval_df$Anglers_Sim
 t_sim    <- eval_df$Time_Sim
 h_sim    <- eval_df$Hours_Sim
@@ -223,8 +223,8 @@ opt <- results %>% arrange(desc(f1_score), desc(t_anglers), desc(t_hours), desc(
 opt_matches <- eval_df %>%
   filter(Anglers_Sim >= opt$t_anglers, Time_Sim >= opt$t_time, Hours_Sim >= opt$t_hours) %>%
   # apply same tiebreaking logic as used in the optimization step
-  arrange(Surv_Survey_RowID, desc(Time_Sim), desc(Anglers_Sim), desc(Hours_Sim)) %>%
-  slice_head(n = 1, by = Surv_Survey_RowID)
+  arrange(Survey_RowID, desc(Time_Sim), desc(Anglers_Sim), desc(Hours_Sim)) %>%
+  slice_head(n = 1, by = Survey_RowID)
 
 # 5. Visualize Optimization ----------------------------------------------------
 # filter data to plot for heatmap
